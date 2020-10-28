@@ -8,6 +8,8 @@ from svm import scipy, sparse
 from commonutil import *
 from commonutil import __all__ as common_all
 
+import numpy as np
+
 if sys.version_info[0] < 3:
 	range = xrange
 	from itertools import izip as zip
@@ -120,13 +122,19 @@ def svm_train(arg1, arg2=None, arg3=None):
 		target = (c_double * l)()
 		libsvm.svm_cross_validation(prob, param, nr_fold, target)
 		ACC, MSE, SCC = evaluations(prob.y[:l], target[:l])
+		cv_acc_arr = []
+		size_fold = int(l/nr_fold)
+		## This computes the cv error on the ith fold that is not trained on
+		for i in range(nr_fold):
+			acc, mse, scc = evaluations(prob.y[i*size_fold:(i+1)*size_fold], target[i*size_fold:(i+1)*size_fold])
+			cv_acc_arr.append(acc)
 		if param.svm_type in [EPSILON_SVR, NU_SVR]:
 			print("Cross Validation Mean squared error = %g" % MSE)
 			print("Cross Validation Squared correlation coefficient = %g" % SCC)
 			return MSE
 		else:
 			print("Cross Validation Accuracy = %g%%" % ACC)
-			return ACC
+			return ACC, cv_acc_arr
 	else:
 		m = libsvm.svm_train(prob, param)
 		m = toPyModel(m)
